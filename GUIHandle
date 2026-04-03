@@ -5,6 +5,10 @@ for _,v in pairs(game.CoreGui:GetChildren()) do
 	end
 end
 
+local vers = 1.0
+
+print(tostring(vers))
+
 local Selenium_UI = Instance.new("ScreenGui")
 Selenium_UI.Name = "Selenium_UI"
 Selenium_UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -138,7 +142,7 @@ function Library:Create(table)
 	main.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 	main.Position = UDim2.fromScale(0.244, 0.292)
 	main.Size = UDim2.fromOffset(488, 299)
-
+	
 	local title = Instance.new("TextLabel")
 	title.Name = "title"
 	title.Font = Enum.Font.Gotham
@@ -621,6 +625,16 @@ function Library:Create(table)
 				end
 			end
 		end)
+	end)
+	
+	UserInputService.InputBegan:Connect(function(key, isChat)
+		if isChat or not table.ToggleBind then return end
+		
+		if key.KeyCode == table.ToggleBind then
+			if Selenium_UI:FindFirstChild("main") then
+				Selenium_UI:FindFirstChild("main").Visible = not Selenium_UI:FindFirstChild("main").Visible
+			end
+		end
 	end)
 
 	local gui = game.CoreGui:WaitForChild("Selenium_UI")
