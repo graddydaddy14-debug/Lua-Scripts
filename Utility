@@ -1,680 +1,653 @@
---// Destroy other instances
-for _,v in pairs(game.CoreGui:GetChildren()) do
-	if v.Name == "Selenium_UI" then
-		v:Destroy()
-	end
-end
+local BlobUtility = {}
 
-local vers = 1.0
+repeat task.wait(0.1) until game:IsLoaded() and game.Players.LocalPlayer and game.Players.LocalPlayer.Character and game.ReplicatedStorage.Data:FindFirstChild(game.Players.LocalPlayer.Name)
 
-print(tostring(vers))
-
-local Selenium_UI = Instance.new("ScreenGui")
-Selenium_UI.Name = "Selenium_UI"
-Selenium_UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-Selenium_UI.Parent = game.CoreGui
-
-local Library = {}
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
-local HTTPService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local Workspace = game.Workspace
+local FoodFolder = Workspace:WaitForChild("Food")
+local CFoodFolder = Workspace:WaitForChild("CFood")
+local VIPFoodFolder = Workspace:WaitForChild("VIPFood")
+local AIFolder = game.ReplicatedStorage:WaitForChild("AIData")
+local DataFolder = game.ReplicatedStorage:WaitForChild("Data")
+local Players = game.Workspace:WaitForChild("Players")
+local Player = game.Players.LocalPlayer
+local Character = Player.Character
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Speed = 250
 
-function Library:Create(table)
-	local windowName = table.Name
-
-	if table.LoadingScreen then
-		local loadingGui = Instance.new("Frame")
-		loadingGui.Name = "loadingGui"
-		loadingGui.AnchorPoint = Vector2.new(0.5, 0.5)
-		loadingGui.Position = UDim2.new(0.5, 0, 0.5, 0)
-		loadingGui.Size = UDim2.fromOffset(0, 0)
-		loadingGui.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-		loadingGui.Parent = Selenium_UI
-
-		local corner = Instance.new("UICorner")
-		corner.CornerRadius = UDim.new(0, 14)
-		corner.Parent = loadingGui
-
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(70, 70, 70)
-		stroke.Transparency = 0.4
-		stroke.Parent = loadingGui
-
-		-- shadow
-		local shadow = Instance.new("ImageLabel")
-		shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-		shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
-		shadow.Size = UDim2.fromOffset(0, 0)
-		shadow.Image = "rbxassetid://297774371"
-		shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-		shadow.ImageTransparency = 0.5
-		shadow.BackgroundTransparency = 1
-		shadow.ZIndex = loadingGui.ZIndex - 1
-		shadow.Parent = Selenium_UI
-
-		-- text
-		local textLabel = Instance.new("TextLabel")
-		textLabel.AnchorPoint = Vector2.new(0.5, 0.5)
-		textLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
-		textLabel.Size = UDim2.new(1, -40, 1, -40)
-		textLabel.BackgroundTransparency = 1
-		textLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-		textLabel.TextSize = 28 -- FIXED size (no scaling issues)
-		textLabel.Font = Enum.Font.GothamBold
-		textLabel.Text = ""
-		textLabel.TextTransparency = 1
-		textLabel.Parent = loadingGui
-
-		local textStroke = Instance.new("UIStroke")
-		textStroke.Color = Color3.fromRGB(0, 0, 0)
-		textStroke.Thickness = 2
-		textStroke.Transparency = 0.5
-		textStroke.Parent = textLabel
-
-		-- open animation (bigger height)
-		TweenService:Create(loadingGui, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
-			Size = UDim2.fromOffset(450, 220)
-		}):Play()
-
-		TweenService:Create(shadow, TweenInfo.new(0.4, Enum.EasingStyle.Quad), {
-			Size = UDim2.fromOffset(520, 260)
-		}):Play()
-
-		task.wait(0.4)
-
-		-- smooth color lerp loop (no lag)
-		local running = true
-		task.spawn(function()
-			while running do
-				TweenService:Create(loadingGui, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-					BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-				}):Play()
-				task.wait(1.2)
-
-				TweenService:Create(loadingGui, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
-					BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-				}):Play()
-				task.wait(1.2)
+function BlobUtility:AntiCheatBypassRunning()
+	if Character then
+		local animate = Character:FindFirstChild("Animate")
+		if animate then
+			local attribute = animate:GetAttribute(".")
+			if attribute then
+				return true
 			end
-		end)
-
-		-- loading steps
-		for _, v in ipairs(table.LoadingScreen) do
-			local txt = v[1]
-			local time = v[2] / 1000
-
-			TweenService:Create(textLabel, TweenInfo.new(0.2), {
-				TextTransparency = 1
-			}):Play()
-			task.wait(0.2)
-
-			textLabel.Text = txt
-
-			TweenService:Create(textLabel, TweenInfo.new(0.3), {
-				TextTransparency = 0
-			}):Play()
-
-			task.wait(time)
 		end
-
-		running = false
-
-		-- close
-		TweenService:Create(loadingGui, TweenInfo.new(0.3), {
-			Size = UDim2.fromOffset(0, 0)
-		}):Play()
-
-		TweenService:Create(shadow, TweenInfo.new(0.3), {
-			Size = UDim2.fromOffset(0, 0)
-		}):Play()
-
-		task.wait(0.3)
-		loadingGui:Destroy()
-		shadow:Destroy()
 	end
-
-	local main = Instance.new("Frame")
-	main.Name = "main"
-	main.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-	main.Position = UDim2.fromScale(0.244, 0.292)
-	main.Size = UDim2.fromOffset(488, 299)
-	
-	local title = Instance.new("TextLabel")
-	title.Name = "title"
-	title.Font = Enum.Font.Gotham
-	title.Text = windowName
-	title.TextColor3 = Color3.fromRGB(168, 168, 168)
-	title.TextSize = 20
-	title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	title.BackgroundTransparency = 1
-	title.Position = UDim2.fromScale(0.41, 0.0543)
-	title.Size = UDim2.fromOffset(83, 28)
-	title.Parent = main
-
-	local uICorner = Instance.new("UICorner")
-	uICorner.Name = "uICorner"
-	uICorner.Parent = main
-
-	local tabContainer = Instance.new("Frame")
-	tabContainer.Name = "tabContainer"
-	tabContainer.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
-	tabContainer.Position = UDim2.fromScale(0.0342, 0.188)
-	tabContainer.Size = UDim2.fromOffset(454, 30)
-
-	local uICorner1 = Instance.new("UICorner")
-	uICorner1.Name = "uICorner1"
-	uICorner1.CornerRadius = UDim.new(0, 6)
-	uICorner1.Parent = tabContainer
-
-	local uIListLayout = Instance.new("UIListLayout")
-	uIListLayout.Name = "uIListLayout"
-	uIListLayout.Padding = UDim.new(0, 8)
-	uIListLayout.FillDirection = Enum.FillDirection.Horizontal
-	uIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	uIListLayout.Parent = tabContainer
-
-	local uIPadding = Instance.new("UIPadding")
-	uIPadding.Name = "uIPadding"
-	uIPadding.PaddingLeft = UDim.new(0, 7)
-	uIPadding.PaddingTop = UDim.new(0, 4)
-	uIPadding.Parent = tabContainer
-
-	local shadow = Instance.new("ImageLabel")
-	shadow.Name = "shadow"
-	shadow.Image = "rbxassetid://297774371"
-	shadow.ImageColor3 = Color3.fromRGB(15, 15, 15)
-	shadow.ImageTransparency = 0.3
-	shadow.SliceCenter = Rect.new(20, 20, 280, 280)
-	shadow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	shadow.BackgroundTransparency = 1
-	shadow.Position = UDim2.fromScale(0.224, 0.272)
-	shadow.Selectable = true
-	shadow.Size = UDim2.fromOffset(529, 331)
-	shadow.ZIndex = -1
-	shadow.Parent = Selenium_UI
-
-	tabContainer.Parent = main
-	main.Parent = Selenium_UI
-	main.AnchorPoint = Vector2.new(0.5,0.5)
-	shadow.AnchorPoint = Vector2.new(0.5,0.5)
-
-	main.Position = UDim2.new(0.5,0,0.5,0)
-	shadow.Position = UDim2.new(0.5,0,0.5,0)
-
-	local tabHandler = {}
-
-	function tabHandler:Exit()
-		Selenium_UI:Destroy()
-	end
-
-	function tabHandler:Tab(name)
-		--// Creating the yttab
-		local main1 = Instance.new("TextButton")
-		main1.Name = name
-		main1.Font = Enum.Font.Gotham
-		main1.Text = name
-		main1.TextColor3 = Color3.fromRGB(195, 195, 195)
-		main1.TextSize = 13
-		main1.TextTransparency = 0.5
-		main1.AutomaticSize = Enum.AutomaticSize.X
-		main1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		main1.BackgroundTransparency = 1
-		main1.Size = UDim2.fromOffset(10, 24)
-		main1.Parent = tabContainer
-
-		--// Creating the container
-		local container = Instance.new("Frame")
-		container.Name = "container"
-		container.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
-		container.Position = UDim2.fromScale(0.0342, 0.31)
-		container.Size = UDim2.fromOffset(454, 183)
-
-		local uICorner2 = Instance.new("UICorner")
-		uICorner2.Name = "uICorner2"
-		uICorner2.CornerRadius = UDim.new(0, 6)
-		uICorner2.Parent = container
-
-		local holder = Instance.new("ScrollingFrame")
-		holder.Name = "holder"
-		holder.ScrollBarImageColor3 = Color3.fromRGB(76, 76, 76)
-		holder.ScrollBarThickness = 2
-		holder.ScrollingDirection = Enum.ScrollingDirection.Y
-		holder.Active = true
-		holder.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		holder.BackgroundTransparency = 1
-		holder.BorderColor3 = Color3.fromRGB(33, 33, 33)
-		holder.Position = UDim2.fromScale(0.0022, 0.00404)
-		holder.Size = UDim2.fromOffset(452, 182)
-
-		local uIPadding1 = Instance.new("UIPadding")
-		uIPadding1.Name = "uIPadding1"
-		uIPadding1.PaddingLeft = UDim.new(0, 5)
-		uIPadding1.PaddingTop = UDim.new(0, 7)
-		uIPadding1.Parent = holder
-
-		local uIListLayout1 = Instance.new("UIListLayout")
-		uIListLayout1.Name = "uIListLayout1"
-		uIListLayout1.Padding = UDim.new(0, 3)
-		uIListLayout1.SortOrder = Enum.SortOrder.LayoutOrder
-		uIListLayout1.Parent = holder
-
-		local uICorner11 = Instance.new("UICorner")
-		uICorner11.Name = "uICorner11"
-		uICorner11.CornerRadius = UDim.new(0, 6)
-		uICorner11.Parent = holder
-
-		holder.Parent = container
-		container.Parent = main
-		container.Visible = false
-
-		--// Event
-		main1.MouseButton1Click:Connect(function()
-			for _,v in pairs(game.CoreGui:FindFirstChild('Selenium_UI').main:GetChildren()) do
-				if v.Name == "container" then
-					v.Visible = false
-				end
-			end
-			for _,v in pairs(game.CoreGui['Selenium_UI'].main.tabContainer:GetChildren()) do
-				if v:IsA('TextButton') then
-					game:GetService('TweenService'):Create(v, TweenInfo.new(0.3), {TextTransparency = 0.5}):Play()
-				end
-			end
-			container.Visible = true
-			game:GetService('TweenService'):Create(main1, TweenInfo.new(0.3), {TextTransparency = 0}):Play()
-		end)
-
-		--// Elements
-		local ElementHandler = {}
-		function ElementHandler:Label(text)
-			local label = Instance.new("Frame")
-			label.Name = "label"
-			label.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
-			label.Size = UDim2.fromOffset(441, 32)
-			label.Parent = holder
-
-			local uICorner3 = Instance.new("UICorner")
-			uICorner3.Name = "uICorner3"
-			uICorner3.CornerRadius = UDim.new(0, 6)
-			uICorner3.Parent = label
-
-			local textLabel = Instance.new("TextLabel")
-			textLabel.Name = "textLabel"
-			textLabel.Font = Enum.Font.Gotham
-			textLabel.Text = text
-			textLabel.TextColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel.TextSize = 13
-			textLabel.TextStrokeColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel.TextXAlignment = Enum.TextXAlignment.Left
-			textLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			textLabel.BackgroundTransparency = 1
-			textLabel.Position = UDim2.fromScale(0.0181, 0)
-			textLabel.Size = UDim2.fromOffset(1, 32)
-			textLabel.Parent = label
-		end
-
-		function ElementHandler:Button(text, callback)
-			text = text or "Button"
-			callback = callback or function() end
-
-			local button = Instance.new("TextButton")
-			button.Name = "button"
-			button.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
-			button.Position = UDim2.fromScale(0, 0.135)
-			button.Size = UDim2.fromOffset(441, 32)
-			button.Text = ""
-			button.AutoButtonColor = false
-
-			local uICorner12 = Instance.new("UICorner")
-			uICorner12.Name = "uICorner12"
-			uICorner12.CornerRadius = UDim.new(0, 6)
-			uICorner12.Parent = button
-
-			local textLabel5 = Instance.new("TextLabel")
-			textLabel5.Name = "textLabel5"
-			textLabel5.Font = Enum.Font.Gotham
-			textLabel5.Text = text
-			textLabel5.TextColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel5.TextSize = 13
-			textLabel5.TextStrokeColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel5.TextXAlignment = Enum.TextXAlignment.Left
-			textLabel5.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			textLabel5.BackgroundTransparency = 1
-			textLabel5.Position = UDim2.fromScale(0.0181, 0)
-			textLabel5.Size = UDim2.fromOffset(1, 32)
-			textLabel5.Parent = button
-
-			local imageLabel = Instance.new("ImageLabel")
-			imageLabel.Name = "imageLabel"
-			imageLabel.Image = "http://www.roblox.com/asset/?id=9584292194"
-			imageLabel.ImageColor3 = Color3.fromRGB(195, 195, 195)
-			imageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			imageLabel.BackgroundTransparency = 1
-			imageLabel.Position = UDim2.fromScale(0.943, 0.219)
-			imageLabel.Size = UDim2.fromOffset(18, 18)
-			imageLabel.Parent = button
-
-			button.Parent = holder
-
-			button.MouseEnter:Connect(function()
-				game:GetService('TweenService'):Create(button, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(43,43,43)}):Play()
-			end)
-
-			button.MouseLeave:Connect(function()
-				game:GetService('TweenService'):Create(button, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(38,38,38)}):Play()
-			end)
-
-			button.MouseButton1Click:Connect(function()
-				callback()
-			end)
-		end
-
-		function ElementHandler:Slider(text, default, min, max, callback) -- slider stuff mainly not made by me
-			text = text or "Slider"
-			callback = callback or function() end
-
-			local slider = Instance.new("TextButton")
-			slider.Name = "slider"
-			slider.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
-			slider.Size = UDim2.fromOffset(441, 32)
-			slider.Text = ""
-			slider.AutoButtonColor = false
-
-			local uICorner4 = Instance.new("UICorner")
-			uICorner4.Name = "uICorner4"
-			uICorner4.CornerRadius = UDim.new(0, 6)
-			uICorner4.Parent = slider
-
-			local textLabel1 = Instance.new("TextLabel")
-			textLabel1.Name = "textLabel1"
-			textLabel1.Font = Enum.Font.Gotham
-			textLabel1.Text = text
-			textLabel1.TextColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel1.TextSize = 13
-			textLabel1.TextStrokeColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel1.TextXAlignment = Enum.TextXAlignment.Left
-			textLabel1.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			textLabel1.BackgroundTransparency = 1
-			textLabel1.Position = UDim2.fromScale(0.0181, 0)
-			textLabel1.Size = UDim2.fromOffset(1, 32)
-			textLabel1.Parent = slider
-
-			local frame = Instance.new("Frame")
-			frame.Name = "frame"
-			frame.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
-			frame.Position = UDim2.fromScale(0.753, 0.375)
-			frame.Size = UDim2.fromOffset(102, 8)
-
-			local uICorner5 = Instance.new("UICorner")
-			uICorner5.Name = "uICorner5"
-			uICorner5.CornerRadius = UDim.new(0, 3)
-			uICorner5.Parent = frame
-
-			local frame1 = Instance.new("Frame")
-			frame1.Name = "frame1"
-			frame1.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-			frame1.Position = UDim2.fromScale(-0.00207, 0)
-			frame1.Size = UDim2.fromOffset(44, 8)
-
-			local uICorner6 = Instance.new("UICorner")
-			uICorner6.Name = "uICorner6"
-			uICorner6.CornerRadius = UDim.new(0, 3)
-			uICorner6.Parent = frame1
-
-			frame1.Parent = frame
-
-			frame.Parent = slider
-
-			local textLabel2 = Instance.new("TextLabel")
-			textLabel2.Name = "textLabel2"
-			textLabel2.Font = Enum.Font.Gotham
-			textLabel2.Text = "7"
-			textLabel2.TextColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel2.TextSize = 13
-			textLabel2.TextStrokeColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			textLabel2.BackgroundTransparency = 1
-			textLabel2.Position = UDim2.fromScale(0.653, 0)
-			textLabel2.Size = UDim2.fromOffset(44, 32)
-			textLabel2.Parent = slider
-
-			slider.Parent = holder
-			textLabel2.Text = tostring(default)
-
-			local hovered = false
-			local down = false
-
-			slider.MouseEnter:Connect(function()
-				hovered = true
-				game:GetService('TweenService'):Create(slider, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(43,43,43)}):Play()
-			end)
-
-			slider.MouseLeave:Connect(function()
-				if not down then
-					game:GetService('TweenService'):Create(slider, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(38,38,38)}):Play()
-				end
-			end)
-
-			game:GetService('UserInputService').InputEnded:connect(function(key)
-				if key.UserInputType == Enum.UserInputType.MouseButton1 then
-					down = false
-					game:GetService('TweenService'):Create(slider, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(38,38,38)}):Play()
-				end
-			end)
-
-			slider.MouseButton1Down:connect(function()
-				game:GetService('TweenService'):Create(slider, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(47,47,47)}):Play()
-				down = true
-				while RunService.RenderStepped:wait() and down do
-					local percentage = math.clamp((Mouse.X - frame1.AbsolutePosition.X) / (frame1.AbsoluteSize.X), 0, 1)
-					local value = ((max - min) * percentage) + min
-					value = math.floor(value)
-					textLabel2.Text = value
-					local tween = game:GetService('TweenService'):Create(frame1, TweenInfo.new(0.06), {Size = UDim2.fromScale(percentage, 1)}):Play()
-					callback(value)
-				end
-			end)
-		end
-
-		function ElementHandler:Toggle(text, callback)
-			text = text or "Toggle"
-			callback = callback or function() end
-
-			local toggle1 = Instance.new("TextButton")
-			toggle1.Name = "toggle1"
-			toggle1.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
-			toggle1.Size = UDim2.fromOffset(441, 32)
-			toggle1.Text = ""
-			toggle1.AutoButtonColor = false
-
-			local uICorner9 = Instance.new("UICorner")
-			uICorner9.Name = "uICorner9"
-			uICorner9.CornerRadius = UDim.new(0, 6)
-			uICorner9.Parent = toggle1
-
-			local textLabel4 = Instance.new("TextLabel")
-			textLabel4.Name = "textLabel4"
-			textLabel4.Font = Enum.Font.Gotham
-			textLabel4.Text = text
-			textLabel4.TextColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel4.TextSize = 13
-			textLabel4.TextStrokeColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel4.TextXAlignment = Enum.TextXAlignment.Left
-			textLabel4.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			textLabel4.BackgroundTransparency = 1
-			textLabel4.Position = UDim2.fromScale(0.0181, 0)
-			textLabel4.Size = UDim2.fromOffset(1, 32)
-			textLabel4.Parent = toggle1
-
-			local frame3 = Instance.new("Frame")
-			frame3.Name = "frame3"
-			frame3.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-			frame3.Position = UDim2.fromScale(0.943, 0.219)
-			frame3.Size = UDim2.fromOffset(18, 18)
-
-			local uICorner10 = Instance.new("UICorner")
-			uICorner10.Name = "uICorner10"
-			uICorner10.CornerRadius = UDim.new(0, 3)
-			uICorner10.Parent = frame3
-
-			local uIStroke1 = Instance.new("UIStroke")
-			uIStroke1.Name = "uIStroke1"
-			uIStroke1.Color = Color3.fromRGB(76, 76, 76)
-			uIStroke1.Parent = frame3
-
-			frame3.Parent = toggle1
-
-			toggle1.Parent = holder
-
-			local tog = false
-
-			toggle1.MouseEnter:Connect(function()
-				game:GetService('TweenService'):Create(toggle1, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(43,43,43)}):Play()
-			end)
-
-			toggle1.MouseLeave:Connect(function()
-				game:GetService('TweenService'):Create(toggle1, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(38,38,38)}):Play()
-			end)
-
-			toggle1.MouseButton1Click:Connect(function()
-				tog = not tog
-				callback(tog)
-				if tog then
-					game:GetService('TweenService'):Create(frame3, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(23, 143, 75)}):Play()
-					game:GetService('TweenService'):Create(uIStroke1, TweenInfo.new(0.2), {Color = Color3.fromRGB(32, 202, 106)}):Play()
-				else
-					game:GetService('TweenService'):Create(frame3, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 45)}):Play()
-					game:GetService('TweenService'):Create(uIStroke1, TweenInfo.new(0.2), {Color = Color3.fromRGB(76, 76, 76)}):Play()
-				end
-			end)
-		end
-
-		function ElementHandler:Textbox(text, callback)
-			text = text or "Textbox"
-			callback = callback or function() end
-
-			local textbox = Instance.new("Frame")
-			textbox.Name = "textbox"
-			textbox.BackgroundColor3 = Color3.fromRGB(38, 38, 38)
-			textbox.Size = UDim2.fromOffset(441, 32)
-
-			local uICorner13 = Instance.new("UICorner")
-			uICorner13.Name = "uICorner13"
-			uICorner13.CornerRadius = UDim.new(0, 6)
-			uICorner13.Parent = textbox
-
-			local textLabel6 = Instance.new("TextLabel")
-			textLabel6.Name = "textLabel6"
-			textLabel6.Font = Enum.Font.Gotham
-			textLabel6.Text = text
-			textLabel6.TextColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel6.TextSize = 13
-			textLabel6.TextStrokeColor3 = Color3.fromRGB(195, 195, 195)
-			textLabel6.TextXAlignment = Enum.TextXAlignment.Left
-			textLabel6.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-			textLabel6.BackgroundTransparency = 1
-			textLabel6.Position = UDim2.fromScale(0.0181, 0)
-			textLabel6.Size = UDim2.fromOffset(1, 32)
-			textLabel6.Parent = textbox
-
-			local textBox = Instance.new("TextBox")
-			textBox.Name = "textBox"
-			textBox.Font = Enum.Font.SourceSans
-			textBox.Text = ""
-			textBox.TextColor3 = Color3.fromRGB(195, 195, 195)
-			textBox.TextSize = 12
-			textBox.BackgroundColor3 = Color3.fromRGB(33, 33, 33)
-			textBox.Position = UDim2.fromScale(0.864, 0.188)
-			textBox.Size = UDim2.fromOffset(52, 19)
-
-			local uICorner14 = Instance.new("UICorner")
-			uICorner14.Name = "uICorner14"
-			uICorner14.CornerRadius = UDim.new(0, 6)
-			uICorner14.Parent = textBox
-
-			textBox.Parent = textbox
-			textbox.Parent = holder
-
-			textbox.MouseEnter:Connect(function()
-				game:GetService('TweenService'):Create(textbox, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(43,43,43)}):Play()
-			end)
-
-			textbox.MouseLeave:Connect(function()
-				game:GetService('TweenService'):Create(textbox, TweenInfo.new(0.3), {BackgroundColor3 = Color3.fromRGB(38,38,38)}):Play()
-			end)
-
-			textBox.FocusLost:Connect(function()
-				callback(textBox.Text)
-			end)
-		end
-
-		return ElementHandler
-	end
-	--// Drag - not by me
-	main.MouseEnter:Connect(function()
-		local Input = main.InputBegan:connect(function(Key)
-			if Key.UserInputType == Enum.UserInputType.MouseButton1 then
-				local ObjectPosition = Vector2.new(Mouse.X - main.AbsolutePosition.X, Mouse.Y - main.AbsolutePosition.Y)
-				while RunService.RenderStepped:wait() and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-					local FrameX, FrameY = math.clamp(Mouse.X - ObjectPosition.X, 0, Selenium_UI.AbsoluteSize.X - main.AbsoluteSize.X), math.clamp(Mouse.Y - ObjectPosition.Y, 0, Selenium_UI.AbsoluteSize.Y - main.AbsoluteSize.Y)
-					game:GetService('TweenService'):Create(main, TweenInfo.new(0.1), {Position = UDim2.fromOffset(FrameX + (main.Size.X.Offset * main.AnchorPoint.X), FrameY + (main.Size.Y.Offset * main.AnchorPoint.Y))}):Play()
-					game:GetService('TweenService'):Create(shadow, TweenInfo.new(0.1), {Position = UDim2.fromOffset(FrameX + (main.Size.X.Offset * main.AnchorPoint.X), FrameY + (main.Size.Y.Offset * main.AnchorPoint.Y))}):Play()
-				end
-			end
-		end)
-	end)
-	
-	UserInputService.InputBegan:Connect(function(key, isChat)
-		if isChat or not table.ToggleBind then return end
-		
-		if key.KeyCode == table.ToggleBind then
-			if Selenium_UI:FindFirstChild("main") then
-				Selenium_UI:FindFirstChild("main").Visible = not Selenium_UI:FindFirstChild("main").Visible
-			end
-		end
-	end)
-
-	local gui = game.CoreGui:WaitForChild("Selenium_UI")
-	local mainFrame = gui:WaitForChild("main")
-	local tabContainer = mainFrame:WaitForChild("tabContainer")
-
-	tabContainer.ChildAdded:Connect(function()
-		task.wait() -- let container finish creating
-
-		-- find first container safely
-		for _, v in ipairs(mainFrame:GetChildren()) do
-			if v.Name == "container" then
-				v.Visible = true
-				break
-			end
-		end
-
-		-- highlight first tab
-		local firstTab = tabContainer:FindFirstChildWhichIsA("TextButton")
-		if firstTab then
-			game:GetService("TweenService"):Create(firstTab, TweenInfo.new(0.3), {
-				TextTransparency = 0
-			}):Play()
-		end
-	end)
-
-	spawn(function()
-		if table.StartupSound.Toggle and table.StartupSound.SoundID ~= nil then
-			local sound = Instance.new('Sound', game.CoreGui)
-			sound.Name = "Startup Sound"
-			sound.SoundId = "rbxassetid://6958727243"
-			sound.Volume = 1.5
-			sound.TimePosition = table.StartupSound.TimePosition
-			sound:Play()
-			sound.Stopped:Wait()
-			sound:Destroy()
-		end
-	end)
-
-	return tabHandler
+	return false
 end
 
-return Library
+function BlobUtility:InitializeAntiCheatBypass()
+	if BlobUtility:AntiCheatBypassRunning() then return end
+
+	local AntiCheat = Character:FindFirstChild("Animate")
+	if AntiCheat then
+		if AntiCheat:GetAttribute(".") then
+			return
+		end
+
+		AntiCheat:Destroy()
+	end
+
+	local animate = Instance.new("LocalScript")
+	animate.Name = "Animate"
+	animate:SetAttribute(".", ".")
+	animate.Parent = Character
+	-- Come back to this later... this is to bypass shitty anti cheat
+end
+
+
+function BlobUtility:SetSpeed(speed)
+	Speed = speed
+end
+
+function BlobUtility:GetSpeed()
+	return Speed
+end
+
+---------- HOOK FUNCTIONS ----------
+local con -- to stop memory leak
+
+local function runchar(char)
+	Character = char
+	HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+	char.ChildAdded:Connect(function(child)
+		if child.Name == "Animate" then
+			if child:GetAttribute(".") then
+				local player = game.Players.LocalPlayer
+				local runService = game:GetService("RunService")
+				local humanoid = Character:WaitForChild("Humanoid")
+
+				repeat
+					task.wait(0.1)
+				until player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				local stats = game.ReplicatedStorage.Data:WaitForChild(player.Name):WaitForChild("Stats")
+
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+
+				local UIS = game:GetService("UserInputService")
+
+				local function getInput()
+					local forward = (UIS:IsKeyDown(Enum.KeyCode.W) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.S) and 1 or 0)
+					local right = (UIS:IsKeyDown(Enum.KeyCode.D) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.A) and 1 or 0)
+					local input = Vector3.new(right, 0, forward)
+
+					if input.Magnitude > 0 then
+						input = input.Unit
+					end
+
+					return input
+				end
+
+				if con then
+					con:Disconnect()
+					con = nil
+				end
+
+				con = runService.RenderStepped:Connect(function()
+					local character = player.Character
+					if not character then return end
+
+					local root = character:FindFirstChild("HumanoidRootPart")
+					if not root then return end
+
+					local mass = stats:WaitForChild("Mass").Value
+					local speed = Speed
+					
+					if speed == -1 then
+						local data = BlobUtility:GetData(game.Players.LocalPlayer.Name)
+						if not data then return end
+						
+						local Mass = BlobUtility:GetMass(data)
+						if not Mass then return end
+						
+						Speed = 0.85 ^ math.log10(Mass) * 40
+					end
+
+					if stats:WaitForChild("x2Speed").Value > 0 then
+						speed = speed * 2
+					end
+					
+					humanoid.WalkSpeed = speed
+
+					local input = getInput()
+
+					if input.Magnitude > 0 then
+						local cam = workspace.CurrentCamera.CFrame
+						local move = cam.LookVector * input.Z + cam.RightVector * input.X
+						move = Vector3.new(move.X, 0, move.Z)
+
+						if move.Magnitude > 0 then
+							move = move.Unit * speed
+						end
+
+						local rayParams = RaycastParams.new()
+						rayParams.FilterDescendantsInstances = {character}
+						rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+						local ray = workspace:Raycast(root.Position, Vector3.new(0, -3, 0), rayParams)
+
+						if ray then
+							local normal = ray.Normal
+							move = move - normal * move:Dot(normal)
+						end
+
+						root.AssemblyLinearVelocity = Vector3.new(
+							move.X,
+							root.AssemblyLinearVelocity.Y,
+							move.Z
+						)
+					else
+						root.AssemblyLinearVelocity = Vector3.new(
+							0,
+							root.AssemblyLinearVelocity.Y,
+							0
+						)
+					end
+				end)
+			end
+		end
+	end)
+end
+
+if Player.Character then runchar(Player.Character) end -- to make sure the ac bypass always runs lol
+Player.CharacterAdded:Connect(function(char) runchar(char) end)
+
+Player.CharacterRemoving:Connect(function()
+	if con then
+		con:Disconnect()
+		con = nil
+	end
+	Character = nil
+	HumanoidRootPart = nil
+end)
+
+
+---------- HELPER FUNCTIONS ----------
+
+function BlobUtility:isPlayerInPath(startLine: Vector3, endLine: Vector3) -- made by chatgpt because I don't know fuck all about math in lua
+	startLine = Vector3.new(startLine.X, 0, startLine.Z)
+	endLine = Vector3.new(endLine.X, 0, endLine.Z)
+
+	local playersInPath = {}
+	local direction = (endLine - startLine)
+	local distance = direction.Magnitude
+
+	if distance == 0 then return playersInPath end
+	direction = direction.Unit
+
+	for _, v in pairs(Players:GetChildren()) do
+		local rootPart = v:FindFirstChild("HumanoidRootPart")
+		if rootPart then
+			local root = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
+
+			local t = (root - startLine):Dot(direction) / distance
+			local point = startLine + direction * math.clamp(t, 0, 1) * distance
+
+			local distFromLine = (root - point).Magnitude
+			if distFromLine <= 10 then
+				table.insert(playersInPath, v)
+			end
+		end
+	end
+
+	return playersInPath
+end
+
+function BlobUtility:GetGame()
+	return {Normal = 82647344334312, Big = 105661974211287, Pro = 92953445897086}
+end
+
+function BlobUtility:TeleportToPlace(placeId : number, JobId)
+	if JobId then
+		TeleportService:TeleportToPlaceInstance(placeId, JobId, Player)
+		return
+	end
+
+	TeleportService:Teleport(placeId, Player)
+end
+
+function BlobUtility:GetNameFromID(placeID)
+	local getGame = BlobUtility:GetGame()
+	local names = {"Normal", "Big", "Pro"}
+	for _, v in pairs(names) do
+		if getGame[v] == placeID then
+			return v
+		end
+	end
+	return nil
+end
+
+function BlobUtility:GetCurrentGame()
+	for _, v in pairs(BlobUtility:GetGame()) do
+		local id = BlobUtility:GetNameFromID(game.PlaceId)
+		if id and id ~= 0 then
+			return id
+		end
+	end
+	return 0
+end
+
+function BlobUtility:GetData(name : string) -- always gonna use strings instead of players... just for the ai bots ya know
+	if DataFolder then
+		local data = DataFolder:FindFirstChild(name)
+		if data then
+			return data
+		end
+	end
+
+	if AIFolder then
+		local data = AIFolder:FindFirstChild(name)
+		if data then
+			return data
+		end
+	end
+
+	return false
+end
+
+function BlobUtility:GetFoods()
+	local food = {}
+
+	for _, v in ipairs(FoodFolder:GetChildren()) do table.insert(food, v) end
+
+	for _, v in ipairs(CFoodFolder:GetChildren()) do table.insert(food, v) end
+
+	local Data = BlobUtility:GetData(Player.Name)
+	if Data and Data:FindFirstChild("Gamepasses") then
+		if Data.Gamepasses.VIP.Value > os.time() then
+			for _, v in ipairs(VIPFoodFolder:GetChildren()) do
+				table.insert(food, v)
+			end
+		end
+	end
+
+	return food
+end
+
+function BlobUtility:isDead(name : string)
+	local data = BlobUtility:GetData(name) 
+	if data then
+		return not Players:FindFirstChild(name)
+	end
+	return false
+end
+
+function BlobUtility:GetMass(Data : Folder)
+	if not Data then return end
+	if not Data:FindFirstChild("Stats") then return end
+	if not Data.Stats:FindFirstChild("Mass") then return end
+	return Data.Stats.Mass.Value
+end
+
+function BlobUtility:IsPlayerSafe(targetPlayer)
+	local targetRoot = targetPlayer:FindFirstChild("HumanoidRootPart")
+	if not targetRoot then return false end
+
+	local targetData = BlobUtility:GetData(targetPlayer.Name)
+	local targetMass = targetData and BlobUtility:GetMass(targetData)
+	if not targetMass then return false end
+
+	for _, other in pairs(Players:GetChildren()) do
+		if other.Name ~= Player.Name and other.Name ~= targetPlayer.Name then
+			local otherRoot = other:FindFirstChild("HumanoidRootPart")
+			if otherRoot then
+				local otherData = BlobUtility:GetData(other.Name)
+				local otherMass = otherData and BlobUtility:GetMass(otherData)
+
+				if otherMass and otherMass > targetMass then
+					local dist = (otherRoot.Position - targetRoot.Position).Magnitude
+					if dist < 15 then
+						return false
+					end
+				end
+			end
+		end
+	end
+
+	return true
+end
+
+function BlobUtility:GetPlayerFromCharacter(char : Model)
+	return Players:GetPlayerFromCharacter(char) or Players:GetPlayerFromCharacter(char.Parent)
+end
+
+function BlobUtility:ResetSpeed()
+	local Data = BlobUtility:GetData(Player.Name)
+	if not Data then return end
+	
+	local Mass = BlobUtility:GetMass(Data)
+	if not Mass then return end
+	
+	Speed = -1
+end 
+
+function BlobUtility:GetNearestPlayer(pos)
+	local nearestPlayer = nil
+	local nearestDistance = math.huge
+
+	local myMass = BlobUtility:GetMass(BlobUtility:GetData(Player.Name))
+	if not myMass then return nil end
+
+	for _, player in pairs(Players:GetChildren()) do
+		if player.Name ~= Player.Name and player:FindFirstChild("HumanoidRootPart") then
+
+			local data = BlobUtility:GetData(player.Name)
+			local mass = data and BlobUtility:GetMass(data)
+			if mass and mass < myMass and mass > 500 and not Player:IsFriendsWithAsync(BlobUtility:GetPlayerFromCharacter(player).UserId) and not BlobUtility:isDead(Player.Name) and not BlobUtility:isDead(player.Name) then
+				if BlobUtility:IsPlayerSafe(player) then	
+					local distance = (player.HumanoidRootPart.Position - pos).Magnitude
+
+					if distance < nearestDistance then
+						nearestDistance = distance
+						nearestPlayer = player
+					end
+				end
+			end
+		end
+	end
+
+	if not nearestPlayer then
+		return nil
+	end
+
+	return {
+		Name = nearestPlayer.Name,
+		Magnitude = nearestDistance,
+		Player = nearestPlayer,
+		Position = nearestPlayer.HumanoidRootPart.Position,
+		Character = nearestPlayer,
+		isDead = BlobUtility:isDead(nearestPlayer.Name)
+	}
+end
+
+function BlobUtility:GetBankInfo(name : string)
+	local data = BlobUtility:GetData(name)
+	if not data then return end
+	
+	if not data:FindFirstChild("Stats") then return end
+	
+	local bankMass, saveCooldown, LoadCooldown = data.Stats.BankMass.Value, data.Stats.SaveCooldown.Value, data.Stats.LoadCooldown.Value
+	
+	return {bankMass = bankMass, saveCooldown = saveCooldown, LoadCooldown = LoadCooldown}
+end
+
+function BlobUtility:GetAllPlayersLowerMass()
+	local lowerMassPlayers = {}
+	for _, player in Players:GetChildren() do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			if data then
+				local mass = BlobUtility:GetMass(data)
+				if mass and mass < BlobUtility:GetMass(BlobUtility:GetData(Player.Name)) then
+					table.insert(lowerMassPlayers, player)
+				end
+			end
+		end
+	end
+	return lowerMassPlayers
+end
+
+function BlobUtility:GetAllPlayersLowerThan(mass2 : number)
+	local lowerMassPlayers = {}
+	for _, player in Players:GetChildren() do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			if data then
+				local mass = BlobUtility:GetMass(data)
+				if mass and mass < mass2 then
+					table.insert(lowerMassPlayers, player)
+				end
+			end
+		end
+	end
+	return lowerMassPlayers
+end
+
+function BlobUtility:GetPlayersHigherThan(mass : number)
+	local higherMassPlayers = {}
+	for _, player in Players:GetChildren() do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			if data then
+				local mass2 = BlobUtility:GetMass(data)
+				if mass2 and mass2 > mass then
+					table.insert(higherMassPlayers, player)
+				end
+			end
+		end
+	end
+	return higherMassPlayers
+end
+
+function BlobUtility:isHigherMass(Data : Folder) 
+	if Data and Data ~= BlobUtility:GetData(game.Players.LocalPlayer.Name) then
+		local mass = BlobUtility:GetMass(Data)
+		local mass2 = BlobUtility:GetMass(BlobUtility:GetData(game.Players.LocalPlayer.Name))
+		if mass and mass2 then
+			return mass < mass2
+		end
+	end
+	return false
+end
+
+function BlobUtility:GetLowerPlayers()
+	local lowerMassPlayers = {}
+	for _, player in Players:GetChildren() do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			if data then
+				local mass = BlobUtility:GetMass(data)
+				if mass and mass < BlobUtility:GetMass(BlobUtility:GetData(Player.Name)) then
+					table.insert(lowerMassPlayers, player)
+				end
+			end
+		end
+	end
+	return lowerMassPlayers
+end
+
+function BlobUtility:GetRootFromCharacter(character : Model)
+	return character:FindFirstChild("HumanoidRootPart")
+end
+
+function BlobUtility:GetPositionFromCharacter(character : Model)
+	return BlobUtility:GetRootFromCharacter(character).Position
+end
+
+function BlobUtility:GetDistanceFromNames(name : string, name2 : string)
+	local char1 = Players:FindFirstChild(name)
+	local char2 = Players:FindFirstChild(name2)
+	if char1 and char2 then
+		return (BlobUtility:GetPositionFromCharacter(char1) - BlobUtility:GetPositionFromCharacter(char2)).Magnitude
+	end
+	return false
+end
+
+function BlobUtility:GetDistance(pos1 : Vector3, pos2 : Vector3)
+	return (pos1 - pos2).Magnitude
+end
+
+function BlobUtility:isDistance(pos, pos2, index)
+	return (pos - pos2).Magnitude < index
+end
+
+function BlobUtility:GetMassFromOrb(orb : Part)
+	local ui = orb:FindFirstChild("UI")
+	if not ui then return 0 end
+	local mass = ui:FindFirstChild("Mass")
+	if not mass then return 0 end
+	return tonumber(mass.Text) or 0
+end
+
+---------- FUNCTIONS ----------
+function BlobUtility.isCloseToDying(pos)
+	local player = BlobUtility:GetNearestPlayer(HumanoidRootPart.Position)
+	if player then
+		if BlobUtility:isDistance(HumanoidRootPart.Position, player.Position, 50 + (HumanoidRootPart.Size.X)) then
+			return BlobUtility:isHigherMass(BlobUtility:GetData(player.Name))
+		end
+	end
+end
+
+function BlobUtility:Teleport(Position : Vector3, arg) -- EASIEST TELEPORT CODE EVER... FIX YOUR GAME 😴🥱🥱
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+		if arg then return end
+
+		BlobUtility:Teleport(Position, true) -- true arguement ensures that it won't run multiple times. aka crashing roblox
+	end
+
+	if Character then
+		if HumanoidRootPart then
+			HumanoidRootPart.Position = Vector3.new(Position.X, 0, Position.Z)
+			if Character:FindFirstChild("Spin") then
+				Character.Spin.Position = Vector3.new(Position.X, 0, Position.Z)
+			end
+		end
+	end
+
+	return true
+end
+
+local antiDeathPos = nil
+local antiDeathCooldown = false
+
+function BlobUtility:AntiDeath()
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+	end
+
+	if Character then
+		if HumanoidRootPart then
+			if HumanoidRootPart.Position ~= Vector3.new(999, 0, -999) then 
+				antiDeathPos = HumanoidRootPart.Position
+			end
+		end
+		BlobUtility:Teleport(Vector3.new(999, 0, -999))
+		antiDeathCooldown = true
+	end
+end
+
+function BlobUtility:GetClosestOrb()
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+	end
+
+	local closestOrb = nil
+	for _, v in pairs(BlobUtility:GetFoods()) do
+		if not closestOrb then
+			closestOrb = v
+		else
+			if BlobUtility:GetDistance(HumanoidRootPart.Position, v.Position) < BlobUtility:GetDistance(HumanoidRootPart.Position, closestOrb.Position) then
+				closestOrb = v
+			end
+		end
+	end
+	return closestOrb
+end
+
+function BlobUtility:IsOrbSafe(orbPos)
+	local playersInPath = BlobUtility:isPlayerInPath(HumanoidRootPart.Position, orbPos)
+	local myMass = BlobUtility:GetMass(BlobUtility:GetData(Player.Name))
+
+	for _, player in pairs(playersInPath) do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			local mass = data and BlobUtility:GetMass(data)
+
+			if mass and myMass and mass > myMass then
+				return false
+			end
+		end
+	end
+
+	return true
+end
+
+function BlobUtility:GetMostValuableOrb()
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+	end
+
+	local bestOrb = nil
+	local myMass = BlobUtility:GetMass(BlobUtility:GetData(Player.Name))
+
+	for _, v in pairs(BlobUtility:GetFoods()) do
+		local orbMass = BlobUtility:GetMassFromOrb(v)
+
+		if orbMass and myMass and orbMass < myMass then
+			if BlobUtility:IsOrbSafe(v.Position) then
+				if not bestOrb or orbMass > BlobUtility:GetMassFromOrb(bestOrb) then
+					bestOrb = v
+				end
+			end
+		end
+	end
+
+	return bestOrb
+end
+
+function BlobUtility:Kill(name : string)
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+	end
+
+	local p = Players:FindFirstChild(name) 
+	if p and Character then
+		local lastPos = Character.HumanoidRootPart.Position
+		if false then -- laggyKill then
+			-- task.spawn(function()
+			-- 	local stepTime = 0.35
+
+			-- 	while p and Character do
+			-- 		local currentPos = Character.HumanoidRootPart.Position
+			-- 		local targetPos = p.HumanoidRootPart.Position
+
+			-- 		local distance = GetDistanceFromNames(p.Name, Player.Name)
+			-- 		if not distance or distance <= 3 then break end
+
+			-- 		local randomFactor = math.random(40, 80) / 100 
+			-- 		local direction = (targetPos - currentPos)
+
+			-- 		local nextPosition = currentPos + (direction * randomFactor)
+
+			-- 		Teleport(nextPosition)
+
+			-- 		task.wait(stepTime)
+			-- 	end
+			-- end)
+		else
+			BlobUtility:Teleport(BlobUtility:GetPositionFromCharacter(p))
+		end
+		local del = 0.35
+		--if laggyKill then
+		--	del *= 10 
+		--end
+		task.delay(del, function()
+			BlobUtility:Teleport(lastPos)
+		end)
+	end
+
+	if not p then return end
+
+	repeat task.wait(0.1) until BlobUtility:isDead(name)
+	return true
+end
+
+return BlobUtility
