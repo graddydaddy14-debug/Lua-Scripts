@@ -1,0 +1,645 @@
+local BlobUtility = {}
+
+repeat task.wait(0.1) until game:IsLoaded() and game.Players.LocalPlayer and game.Players.LocalPlayer.Character and game.ReplicatedStorage.Data:FindFirstChild(game.Players.LocalPlayer.Name)
+
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UIS = game:GetService("UserInputService")
+local TeleportService = game:GetService("TeleportService")
+local Workspace = game.Workspace
+local FoodFolder = Workspace:WaitForChild("Food")
+local CFoodFolder = Workspace:WaitForChild("CFood")
+local VIPFoodFolder = Workspace:WaitForChild("VIPFood")
+local AIFolder = game.ReplicatedStorage:WaitForChild("AIData")
+local DataFolder = game.ReplicatedStorage:WaitForChild("Data")
+local Players = game.Workspace:WaitForChild("Players")
+local Player = game.Players.LocalPlayer
+local Character = Player.Character
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local Speed = 250
+
+function BlobUtility:AntiCheatBypassRunning()
+	if Character then
+		local animate = Character:FindFirstChild("Animate")
+		if animate then
+			local attribute = animate:GetAttribute(".")
+			if attribute then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+function BlobUtility:InitializeAntiCheatBypass()
+	if BlobUtility:AntiCheatBypassRunning() then return end
+
+	local AntiCheat = Character:FindFirstChild("Animate")
+	if AntiCheat then
+		if AntiCheat:GetAttribute(".") then
+			return
+		end
+
+		AntiCheat:Destroy()
+	end
+
+	local animate = Instance.new("LocalScript")
+	animate.Name = "Animate"
+	animate:SetAttribute(".", ".")
+	animate.Parent = Character
+	-- Come back to this later... this is to bypass shitty anti cheat
+end
+
+
+function BlobUtility:SetSpeed(speed)
+	Speed = speed
+end
+
+function BlobUtility:GetSpeed()
+	return Speed
+end
+
+---------- HOOK FUNCTIONS ----------
+local con -- to stop memory leak
+
+local function runchar(char)
+	Character = char
+	HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+	char.ChildAdded:Connect(function(child)
+		if child.Name == "Animate" then
+			if child:GetAttribute(".") then
+				local player = game.Players.LocalPlayer
+				local runService = game:GetService("RunService")
+				local humanoid = Character:WaitForChild("Humanoid")
+
+				repeat
+					task.wait(0.1)
+				until player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				print("JASD")
+				local stats = game.ReplicatedStorage.Data:WaitForChild(player.Name):WaitForChild("Stats")
+
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+
+				local UIS = game:GetService("UserInputService")
+
+				local function getInput()
+					local forward = (UIS:IsKeyDown(Enum.KeyCode.W) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.S) and 1 or 0)
+					local right = (UIS:IsKeyDown(Enum.KeyCode.D) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.A) and 1 or 0)
+					local input = Vector3.new(right, 0, forward)
+
+					if input.Magnitude > 0 then
+						input = input.Unit
+					end
+
+					return input
+				end
+
+				if con then
+					con:Disconnect()
+					con = nil
+				end
+
+				con = runService.RenderStepped:Connect(function()
+					local character = player.Character
+					if not character then return end
+
+					local root = character:FindFirstChild("HumanoidRootPart")
+					if not root then return end
+
+					local mass = stats:WaitForChild("Mass").Value
+					local speed = Speed
+
+					if stats:WaitForChild("x2Speed").Value > 0 then
+						speed = speed * 2
+					end
+					print("LOl")
+					humanoid.WalkSpeed = speed
+
+					local input = getInput()
+
+					if input.Magnitude > 0 then
+						local cam = workspace.CurrentCamera.CFrame
+						local move = cam.LookVector * input.Z + cam.RightVector * input.X
+						move = Vector3.new(move.X, 0, move.Z)
+
+						if move.Magnitude > 0 then
+							move = move.Unit * speed
+						end
+
+						local rayParams = RaycastParams.new()
+						rayParams.FilterDescendantsInstances = {character}
+						rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+						local ray = workspace:Raycast(root.Position, Vector3.new(0, -3, 0), rayParams)
+
+						if ray then
+							local normal = ray.Normal
+							move = move - normal * move:Dot(normal)
+						end
+
+						root.AssemblyLinearVelocity = Vector3.new(
+							move.X,
+							root.AssemblyLinearVelocity.Y,
+							move.Z
+						)
+					else
+						root.AssemblyLinearVelocity = Vector3.new(
+							0,
+							root.AssemblyLinearVelocity.Y,
+							0
+						)
+					end
+				end)
+			end
+		end
+	end)
+end
+
+if Player.Character then runchar(Player.Character) end -- to make sure the ac bypass always runs lol
+Player.CharacterAdded:Connect(function(char) runchar(char) end)
+
+Player.CharacterRemoving:Connect(function()
+	if con then
+		con:Disconnect()
+		con = nil
+	end
+	Character = nil
+	HumanoidRootPart = nil
+end)
+
+
+---------- HELPER FUNCTIONS ----------
+
+function BlobUtility:isPlayerInPath(startLine: Vector3, endLine: Vector3) -- made by chatgpt because I don't know fuck all about math in lua
+	startLine = Vector3.new(startLine.X, 0, startLine.Z)
+	endLine = Vector3.new(endLine.X, 0, endLine.Z)
+
+	local playersInPath = {}
+	local direction = (endLine - startLine)
+	local distance = direction.Magnitude
+
+	if distance == 0 then return playersInPath end
+	direction = direction.Unit
+
+	for _, v in pairs(Players:GetChildren()) do
+		local rootPart = v:FindFirstChild("HumanoidRootPart")
+		if rootPart then
+			local root = Vector3.new(rootPart.Position.X, 0, rootPart.Position.Z)
+
+			local t = (root - startLine):Dot(direction) / distance
+			local point = startLine + direction * math.clamp(t, 0, 1) * distance
+
+			local distFromLine = (root - point).Magnitude
+			if distFromLine <= 10 then
+				table.insert(playersInPath, v)
+			end
+		end
+	end
+
+	return playersInPath
+end
+
+function BlobUtility:GetGame()
+	return {Normal = 82647344334312, Big = 105661974211287, Pro = 92953445897086}
+end
+
+function BlobUtility:TeleportToPlace(placeId : number, JobId)
+	if JobId then
+		TeleportService:TeleportToPlaceInstance(placeId, JobId, Player)
+		return
+	end
+
+	TeleportService:Teleport(placeId, Player)
+end
+
+function BlobUtility:GetNameFromID(placeID)
+	local getGame = BlobUtility:GetGame()
+	local names = {"Normal", "Big", "Pro"}
+	for _, v in pairs(names) do
+		if getGame[v] == placeID then
+			return v
+		end
+	end
+	return nil
+end
+
+function BlobUtility:GetCurrentGame()
+	for _, v in pairs(BlobUtility:GetGame()) do
+		local id = BlobUtility:GetNameFromID(game.PlaceId)
+		if id and id ~= 0 then
+			return id
+		end
+	end
+	return 0
+end
+
+function BlobUtility:GetData(name : string) -- always gonna use strings instead of players... just for the ai bots ya know
+	if DataFolder then
+		local data = DataFolder:FindFirstChild(name)
+		if data then
+			return data
+		end
+	end
+
+	if AIFolder then
+		local data = AIFolder:FindFirstChild(name)
+		if data then
+			return data
+		end
+	end
+
+	return false
+end
+
+function BlobUtility:GetFoods()
+	local food = {}
+
+	for _, v in ipairs(FoodFolder:GetChildren()) do table.insert(food, v) end
+
+	for _, v in ipairs(CFoodFolder:GetChildren()) do table.insert(food, v) end
+
+	local Data = BlobUtility:GetData(Player.Name)
+	if Data and Data:FindFirstChild("Gamepasses") then
+		if Data.Gamepasses.VIP.Value > os.time() then
+			for _, v in ipairs(VIPFoodFolder:GetChildren()) do
+				table.insert(food, v)
+			end
+		end
+	end
+
+	return food
+end
+
+function BlobUtility:isDead(name : string)
+	local data = BlobUtility:GetData(name) 
+	if data then
+		return not Players:FindFirstChild(name)
+	end
+	return false
+end
+
+function BlobUtility:GetMass(Data : Folder)
+	if not Data then return end
+	if not Data:FindFirstChild("Stats") then return end
+	if not Data.Stats:FindFirstChild("Mass") then return end
+	return Data.Stats.Mass.Value
+end
+
+function BlobUtility:IsPlayerSafe(targetPlayer)
+	local targetRoot = targetPlayer:FindFirstChild("HumanoidRootPart")
+	if not targetRoot then return false end
+
+	local targetData = BlobUtility:GetData(targetPlayer.Name)
+	local targetMass = targetData and BlobUtility:GetMass(targetData)
+	if not targetMass then return false end
+
+	for _, other in pairs(Players:GetChildren()) do
+		if other.Name ~= Player.Name and other.Name ~= targetPlayer.Name then
+			local otherRoot = other:FindFirstChild("HumanoidRootPart")
+			if otherRoot then
+				local otherData = BlobUtility:GetData(other.Name)
+				local otherMass = otherData and BlobUtility:GetMass(otherData)
+
+				if otherMass and otherMass > targetMass then
+					local dist = (otherRoot.Position - targetRoot.Position).Magnitude
+					if dist < 15 then
+						return false
+					end
+				end
+			end
+		end
+	end
+
+	return true
+end
+
+function BlobUtility:GetPlayerFromCharacter(char : Model)
+	return Players:GetPlayerFromCharacter(char) or Players:GetPlayerFromCharacter(char.Parent)
+end
+
+function BlobUtility:ResetSpeed()
+	local Data = BlobUtility:GetData(Player.Name)
+	if not Data then return end
+	
+	local Mass = BlobUtility:GetMass(Data)
+	if not Mass then return end
+	
+	Speed = 0.85 ^ math.log10(Mass) * 40
+end 
+
+function BlobUtility:GetNearestPlayer(pos)
+	local nearestPlayer = nil
+	local nearestDistance = math.huge
+
+	local myMass = BlobUtility:GetMass(BlobUtility:GetData(Player.Name))
+	if not myMass then return nil end
+
+	for _, player in pairs(Players:GetChildren()) do
+		if player.Name ~= Player.Name and player:FindFirstChild("HumanoidRootPart") then
+
+			local data = BlobUtility:GetData(player.Name)
+			local mass = data and BlobUtility:GetMass(data)
+			print(mass)
+			if mass and mass < myMass and mass > 500 and not Player:IsFriendsWithAsync(BlobUtility:GetPlayerFromCharacter(player).UserId) and not BlobUtility:isDead(Player.Name) and not BlobUtility:isDead(player.Name) then
+				if BlobUtility:IsPlayerSafe(player) then	
+					local distance = (player.HumanoidRootPart.Position - pos).Magnitude
+
+					if distance < nearestDistance then
+						nearestDistance = distance
+						nearestPlayer = player
+					end
+				end
+			end
+		end
+	end
+
+	if not nearestPlayer then
+		return nil
+	end
+
+	return {
+		Name = nearestPlayer.Name,
+		Magnitude = nearestDistance,
+		Player = nearestPlayer,
+		Position = nearestPlayer.HumanoidRootPart.Position,
+		Character = nearestPlayer,
+		isDead = BlobUtility:isDead(nearestPlayer.Name)
+	}
+end
+
+function BlobUtility:GetBankInfo(name : string)
+	local data = BlobUtility:GetData(name)
+	if not data then return end
+	
+	if not data:FindFirstChild("Stats") then return end
+	
+	local bankMass, saveCooldown, LoadCooldown = data.Stats.BankMass.Value, data.Stats.SaveCooldown.Value, data.Stats.LoadCooldown.Value
+	
+	return {bankMass = bankMass, saveCooldown = saveCooldown, LoadCooldown = LoadCooldown}
+end
+
+function BlobUtility:GetAllPlayersLowerMass()
+	local lowerMassPlayers = {}
+	for _, player in Players:GetChildren() do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			if data then
+				local mass = BlobUtility:GetMass(data)
+				if mass and mass < BlobUtility:GetMass(BlobUtility:GetData(Player.Name)) then
+					table.insert(lowerMassPlayers, player)
+				end
+			end
+		end
+	end
+	return lowerMassPlayers
+end
+
+function BlobUtility:GetAllPlayersLowerThan(mass2 : number)
+	local lowerMassPlayers = {}
+	for _, player in Players:GetChildren() do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			if data then
+				local mass = BlobUtility:GetMass(data)
+				if mass and mass < mass2 then
+					table.insert(lowerMassPlayers, player)
+				end
+			end
+		end
+	end
+	return lowerMassPlayers
+end
+
+function BlobUtility:GetPlayersHigherThan(mass : number)
+	local higherMassPlayers = {}
+	for _, player in Players:GetChildren() do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			if data then
+				local mass2 = BlobUtility:GetMass(data)
+				if mass2 and mass2 > mass then
+					table.insert(higherMassPlayers, player)
+				end
+			end
+		end
+	end
+	return higherMassPlayers
+end
+
+function BlobUtility:isHigherMass(Data : Folder) 
+	if Data and Data ~= BlobUtility:GetData(game.Players.LocalPlayer.Name) then
+		local mass = BlobUtility:GetMass(Data)
+		local mass2 = BlobUtility:GetMass(BlobUtility:GetData(game.Players.LocalPlayer.Name))
+		if mass and mass2 then
+			return mass < mass2
+		end
+	end
+	return false
+end
+
+function BlobUtility:GetLowerPlayers()
+	local lowerMassPlayers = {}
+	for _, player in Players:GetChildren() do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			if data then
+				local mass = BlobUtility:GetMass(data)
+				if mass and mass < BlobUtility:GetMass(BlobUtility:GetData(Player.Name)) then
+					table.insert(lowerMassPlayers, player)
+				end
+			end
+		end
+	end
+	return lowerMassPlayers
+end
+
+function BlobUtility:GetRootFromCharacter(character : Model)
+	return character:FindFirstChild("HumanoidRootPart")
+end
+
+function BlobUtility:GetPositionFromCharacter(character : Model)
+	return BlobUtility:GetRootFromCharacter(character).Position
+end
+
+function BlobUtility:GetDistanceFromNames(name : string, name2 : string)
+	local char1 = Players:FindFirstChild(name)
+	local char2 = Players:FindFirstChild(name2)
+	if char1 and char2 then
+		return (BlobUtility:GetPositionFromCharacter(char1) - BlobUtility:GetPositionFromCharacter(char2)).Magnitude
+	end
+	return false
+end
+
+function BlobUtility:GetDistance(pos1 : Vector3, pos2 : Vector3)
+	return (pos1 - pos2).Magnitude
+end
+
+function BlobUtility:isDistance(pos, pos2, index)
+	return (pos - pos2).Magnitude < index
+end
+
+function BlobUtility:GetMassFromOrb(orb : Part)
+	local ui = orb:FindFirstChild("UI")
+	if not ui then return 0 end
+	local mass = ui:FindFirstChild("Mass")
+	if not mass then return 0 end
+	return tonumber(mass.Text) or 0
+end
+
+---------- FUNCTIONS ----------
+function BlobUtility.isCloseToDying(pos)
+	local player = BlobUtility:GetNearestPlayer(HumanoidRootPart.Position)
+	if player then
+		if BlobUtility:isDistance(HumanoidRootPart.Position, player.Position, 50 + (HumanoidRootPart.Size.X)) then
+			return BlobUtility:isHigherMass(BlobUtility:GetData(player.Name))
+		end
+	end
+end
+
+function BlobUtility:Teleport(Position : Vector3, arg) -- EASIEST TELEPORT CODE EVER... FIX YOUR GAME 😴🥱🥱
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+		if arg then return end
+
+		BlobUtility:Teleport(Position, true) -- true arguement ensures that it won't run multiple times. aka crashing roblox
+	end
+
+	if Character then
+		if HumanoidRootPart then
+			HumanoidRootPart.Position = Vector3.new(Position.X, 0, Position.Z)
+			if Character:FindFirstChild("Spin") then
+				Character.Spin.Position = Vector3.new(Position.X, 0, Position.Z)
+			end
+		end
+	end
+
+	return true
+end
+
+local antiDeathPos = nil
+local antiDeathCooldown = false
+
+function BlobUtility:AntiDeath()
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+	end
+
+	if Character then
+		if HumanoidRootPart then
+			if HumanoidRootPart.Position ~= Vector3.new(999, 0, -999) then 
+				antiDeathPos = HumanoidRootPart.Position
+			end
+		end
+		BlobUtility:Teleport(Vector3.new(999, 0, -999))
+		antiDeathCooldown = true
+	end
+end
+
+function BlobUtility:GetClosestOrb()
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+	end
+
+	local closestOrb = nil
+	for _, v in pairs(BlobUtility:GetFoods()) do
+		if not closestOrb then
+			closestOrb = v
+		else
+			if BlobUtility:GetDistance(HumanoidRootPart.Position, v.Position) < BlobUtility:GetDistance(HumanoidRootPart.Position, closestOrb.Position) then
+				closestOrb = v
+			end
+		end
+	end
+	return closestOrb
+end
+
+function BlobUtility:IsOrbSafe(orbPos)
+	local playersInPath = BlobUtility:isPlayerInPath(HumanoidRootPart.Position, orbPos)
+	local myMass = BlobUtility:GetMass(BlobUtility:GetData(Player.Name))
+
+	for _, player in pairs(playersInPath) do
+		if player.Name ~= Player.Name then
+			local data = BlobUtility:GetData(player.Name)
+			local mass = data and BlobUtility:GetMass(data)
+
+			if mass and myMass and mass > myMass then
+				return false
+			end
+		end
+	end
+
+	return true
+end
+
+function BlobUtility:GetMostValuableOrb()
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+	end
+
+	local bestOrb = nil
+	local myMass = BlobUtility:GetMass(BlobUtility:GetData(Player.Name))
+
+	for _, v in pairs(BlobUtility:GetFoods()) do
+		local orbMass = BlobUtility:GetMassFromOrb(v)
+
+		if orbMass and myMass and orbMass < myMass then
+			if BlobUtility:IsOrbSafe(v.Position) then
+				if not bestOrb or orbMass > BlobUtility:GetMassFromOrb(bestOrb) then
+					bestOrb = v
+				end
+			end
+		end
+	end
+
+	return bestOrb
+end
+
+function BlobUtility:Kill(name : string)
+	if not BlobUtility:AntiCheatBypassRunning() then
+		BlobUtility:InitializeAntiCheatBypass()
+	end
+
+	local p = Players:FindFirstChild(name) 
+	if p and Character then
+		local lastPos = Character.HumanoidRootPart.Position
+		if false then -- laggyKill then
+			-- task.spawn(function()
+			-- 	local stepTime = 0.35
+
+			-- 	while p and Character do
+			-- 		local currentPos = Character.HumanoidRootPart.Position
+			-- 		local targetPos = p.HumanoidRootPart.Position
+
+			-- 		local distance = GetDistanceFromNames(p.Name, Player.Name)
+			-- 		if not distance or distance <= 3 then break end
+
+			-- 		local randomFactor = math.random(40, 80) / 100 
+			-- 		local direction = (targetPos - currentPos)
+
+			-- 		local nextPosition = currentPos + (direction * randomFactor)
+
+			-- 		Teleport(nextPosition)
+
+			-- 		task.wait(stepTime)
+			-- 	end
+			-- end)
+		else
+			BlobUtility:Teleport(BlobUtility:GetPositionFromCharacter(p))
+		end
+		local del = 0.35
+		--if laggyKill then
+		--	del *= 10 
+		--end
+		task.delay(del, function()
+			BlobUtility:Teleport(lastPos)
+		end)
+	end
+
+	if not p then return end
+
+	repeat task.wait(0.1) until BlobUtility:isDead(name)
+	return true
+end
+
+return BlobUtility
