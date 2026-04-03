@@ -17,7 +17,8 @@ local Player = game.Players.LocalPlayer
 local Character = Player.Character
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 local Speed = 250
-print("Running")
+local MovingFrequency = false
+
 function BlobUtility:AntiCheatBypassRunning()
 	if Character then
 		local animate = Character:FindFirstChild("Animate")
@@ -127,7 +128,7 @@ local function runchar(char)
 
 					local input = getInput()
 
-					if input.Magnitude > 0 then
+					if input.Magnitude > 0 and MovingFrequency then
 						local cam = workspace.CurrentCamera.CFrame
 						local move = cam.LookVector * input.Z + cam.RightVector * input.X
 						move = Vector3.new(move.X, 0, move.Z)
@@ -179,6 +180,10 @@ end)
 
 
 ---------- HELPER FUNCTIONS ----------
+
+function BlobUtility:ToggleMovingWhileChatting(value)
+	MovingFrequency = value
+end
 
 function BlobUtility:isPlayerInPath(startLine: Vector3, endLine: Vector3) -- made by chatgpt because I don't know fuck all about math in lua
 	startLine = Vector3.new(startLine.X, 0, startLine.Z)
