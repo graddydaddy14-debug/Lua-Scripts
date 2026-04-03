@@ -116,7 +116,7 @@ local function runchar(char)
 						local Mass = BlobUtility:GetMass(data)
 						if not Mass then return end
 						
-						Speed = 0.85 ^ math.log10(Mass) * 40
+						speed = 0.85 ^ math.log10(Mass) * 40
 					end
 
 					if stats:WaitForChild("x2Speed").Value > 0 then
@@ -334,7 +334,9 @@ function BlobUtility:ResetSpeed()
 	local Mass = BlobUtility:GetMass(Data)
 	if not Mass then return end
 	
-	Speed = -1
+	if Speed ~= -1 then
+		Speed = -1
+	end
 end 
 
 function BlobUtility:GetNearestPlayer(pos)
