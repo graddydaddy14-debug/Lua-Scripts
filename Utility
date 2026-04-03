@@ -53,11 +53,6 @@ end
 
 function BlobUtility:SetSpeed(speed)
 	Speed = speed
-	if Character then
-		if Character:FindFirstChild("Humanoid") then
-			Character.Humanoid.WalkSpeed = speed
-		end
-	end
 end
 
 function BlobUtility:GetSpeed()
@@ -80,7 +75,6 @@ local function runchar(char)
 				repeat
 					task.wait(0.1)
 				until player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				
 				local stats = game.ReplicatedStorage.Data:WaitForChild(player.Name):WaitForChild("Stats")
 
 				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
@@ -113,11 +107,12 @@ local function runchar(char)
 					if not root then return end
 
 					local mass = stats:WaitForChild("Mass").Value
-					local speed = humanoid.WalkSpeed
+					local speed = Speed
 
 					if stats:WaitForChild("x2Speed").Value > 0 then
 						speed = speed * 2
 					end
+					
 					humanoid.WalkSpeed = speed
 
 					local input = getInput()
@@ -344,7 +339,6 @@ function BlobUtility:GetNearestPlayer(pos)
 
 			local data = BlobUtility:GetData(player.Name)
 			local mass = data and BlobUtility:GetMass(data)
-			print(mass)
 			if mass and mass < myMass and mass > 500 and not Player:IsFriendsWithAsync(BlobUtility:GetPlayerFromCharacter(player).UserId) and not BlobUtility:isDead(Player.Name) and not BlobUtility:isDead(player.Name) then
 				if BlobUtility:IsPlayerSafe(player) then	
 					local distance = (player.HumanoidRootPart.Position - pos).Magnitude
