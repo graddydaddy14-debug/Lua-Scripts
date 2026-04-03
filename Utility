@@ -4,7 +4,7 @@ for _,v in pairs(game.CoreGui:GetChildren()) do
 		v:Destroy()
 	end
 end
-
+print("SADOASD")
 local Selenium_UI = Instance.new("ScreenGui")
 Selenium_UI.Name = "Selenium_UI"
 Selenium_UI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
