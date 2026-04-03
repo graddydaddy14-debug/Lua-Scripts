@@ -17,7 +17,7 @@ local Player = game.Players.LocalPlayer
 local Character = Player.Character
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 local Speed = 250
-
+print("Running")
 function BlobUtility:AntiCheatBypassRunning()
 	if Character then
 		local animate = Character:FindFirstChild("Animate")
