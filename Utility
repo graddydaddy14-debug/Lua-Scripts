@@ -108,6 +108,16 @@ local function runchar(char)
 
 					local mass = stats:WaitForChild("Mass").Value
 					local speed = Speed
+					
+					if speed == -1 then
+						local data = BlobUtility:GetData(game.Players.LocalPlayer.Name)
+						if not data then return end
+						
+						local Mass = BlobUtility:GetMass(data)
+						if not Mass then return end
+						
+						Speed = 0.85 ^ math.log10(Mass) * 40
+					end
 
 					if stats:WaitForChild("x2Speed").Value > 0 then
 						speed = speed * 2
@@ -324,7 +334,7 @@ function BlobUtility:ResetSpeed()
 	local Mass = BlobUtility:GetMass(Data)
 	if not Mass then return end
 	
-	Speed = 0.85 ^ math.log10(Mass) * 40
+	Speed = -1
 end 
 
 function BlobUtility:GetNearestPlayer(pos)
