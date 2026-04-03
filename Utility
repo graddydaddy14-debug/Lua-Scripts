@@ -53,6 +53,11 @@ end
 
 function BlobUtility:SetSpeed(speed)
 	Speed = speed
+	if Character then
+		if Character:FindFirstChild("Humanoid") then
+			Character.Humanoid.WalkSpeed = speed
+		end
+	end
 end
 
 function BlobUtility:GetSpeed()
@@ -75,7 +80,7 @@ local function runchar(char)
 				repeat
 					task.wait(0.1)
 				until player and player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-				print("JASD")
+				
 				local stats = game.ReplicatedStorage.Data:WaitForChild(player.Name):WaitForChild("Stats")
 
 				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
@@ -108,12 +113,11 @@ local function runchar(char)
 					if not root then return end
 
 					local mass = stats:WaitForChild("Mass").Value
-					local speed = Speed
+					local speed = humanoid.WalkSpeed
 
 					if stats:WaitForChild("x2Speed").Value > 0 then
 						speed = speed * 2
 					end
-					print("LOl")
 					humanoid.WalkSpeed = speed
 
 					local input = getInput()
